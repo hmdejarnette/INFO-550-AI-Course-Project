@@ -7,13 +7,18 @@ import algorithms as alg
 
 compsToRun = [0]
 
-if 0 in compsToRun: 
+def compare_random_agents(num_games=100):
   winsZero=0
   winsOne=0
   draws=0
    
-  for i in range(100):
-    compGame = prb.Game(prb.TicTacToe(),alg.RandomAgent(),alg.RandomAgent(),False)
+  for i in range(num_games):
+    compGame = prb.Game(
+      prb.TicTacToe(),
+      alg.RandomAgent(),
+      alg.RandomAgent(),
+      False
+    )
     outcome  = compGame.playGame()
     if outcome == 0:
       winsZero+=1
@@ -21,6 +26,8 @@ if 0 in compsToRun:
       winsOne+=1
     if outcome == -1:
       draws+=1  
-      
-  print(f"P0 Wins: {winsZero}\nP1 Wins: {winsOne}\nDraws: {draws}")  
+    print("\n===== Comparison Results =====\n")    
+    print(f"P0 Wins: {winsZero}\nP1 Wins: {winsOne}\nDraws: {draws}")  
   
+if __name__ == "__main__":
+  compare_random_agents()
