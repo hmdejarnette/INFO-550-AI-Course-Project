@@ -6,32 +6,48 @@ import numpy as np
 import cv2
 
 class Game:
-    def __init__(self, problem, pZero, pOne,verbose=True):
-      self.problem = problem      
-      self.players = [pZero,pOne]   
-      self.verbose = verbose   
-      if self.verbose:
-         self.problem.showState()               
+
+    def __init__(self,
+                 problem,
+                 pZero,
+                 pOne=None,
+                 verbose=True,
+                 singlePlayer=False):
+
+        self.problem = problem
+        self.players = [pZero]
+
+        if pOne is not None: #Enable Multiplayer!
+            self.players.append(pOne)
+
+        self.verbose = verbose
+        self.singlePlayer = singlePlayer
+
+        if self.verbose:
+            self.problem.showState()      
+            
     def playGame(self):
-      pCur=0
-      while self.problem.isTerminal()==False:           
-         move = self.players[pCur].getMove(self.problem)           
-         self.problem.doMove(move)
-         if self.verbose:
-            self.problem.showState()
-            print(f"Move {self.problem.ticks}:")
-            print(self.problem.state)
-         pCur = np.abs(pCur-1)
-        
-      wIndex = self.problem.getWinner()
-      winner = self.players[wIndex]
-      if wIndex == -1:
-         winner = "DRAW"
-      #display final state
-      print(f"The Winner is {winner} ({wIndex})!")
-      if self.verbose:
-         self.problem.showState(4000)
-      return wIndex
+        pCur = 0
+        while not self.problem.isTerminal():
+            move = self.players[pCur].getMove(self.problem)
+            self.problem.doMove(move)
+            if self.verbose:
+                self.problem.showState()
+            if not self.singlePlayer:
+                pCur = abs(pCur - 1)
+        if self.singlePlayer:
+            print(f"Game Over! Score: {self.problem.score}")
+            return self.problem.score
+        wIndex = self.problem.getWinner()
+        if wIndex == -1:
+            winner = "DRAW"
+        else:
+            winner = self.players[wIndex]
+        print(f"The Winner is {winner} ({wIndex})!")
+        if self.verbose:
+            self.problem.showState(4000)
+
+        return wIndex
               
 class TicTacToe:
    def __init__(self):
@@ -110,3 +126,75 @@ class TicTacToe:
                
       cv2.imshow('TicTacToe',screen)
       cv2.waitKey(ms)
+
+
+class Snake:
+
+    def __init__(self, width=10, height=10):
+
+        self.width = width
+        self.height = height
+
+        self.snake = [(5, 5)]
+        self.food = (2, 2)
+
+        self.score = 0
+        self.ticks = -1
+
+        self.alive = True
+      
+    def getLegalMoves(self, state=None):
+
+        return [
+            (-1, 0),  # up
+            (1, 0),   # down
+            (0, -1),  # left
+            (0, 1)    # right
+        ]
+
+    def doMove(self, move):
+
+        head_r, head_c = self.snake[0]
+
+        new_head = (
+            head_r + move[0],
+            head_c + move[1]
+        )
+
+        self.snake.insert(0, new_head)
+        self.snake.pop()
+
+        self.ticks += 1
+
+        self.checkCollision()
+
+    def checkCollision(self):
+
+        r, c = self.snake[0]
+
+        if (r < 0 or c < 0 or r >= self.height or c >= self.width):
+              
+            self.alive = False
+            
+    def isTerminal(self, state=None):
+        return not self.alive
+      
+    def getWinner(self, state=None):#For format reasons..
+        return 0
+
+    def showState(self, ms=100):
+        #Make our screen
+        screen = np.zeros((self.height * 20, self.width * 20), dtype=np.uint8 )
+        #Draw our snake
+        for r, c in self.snake:
+            cv2.rectangle(screen,
+                         (c * 20, r * 20),
+                         (c * 20 + 19, r * 20 + 19),
+                          255,
+                          -1 )
+        fr, fc = self.food
+        #Draw the food
+        cv2.circle(screen, (fc * 20 + 10, fr * 20 + 10), 7, 127, -1 )
+        #Show it all
+        cv2.imshow("Snake", screen)
+        cv2.waitKey(ms) 

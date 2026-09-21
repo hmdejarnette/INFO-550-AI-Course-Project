@@ -1,17 +1,21 @@
 import problems as prb
 import algorithms as alg
 
-def run_TicTacToe_demo():
-  
-  print("\n== Tic Tac Toe! ==\n")
+print("===== TIC TAC TOE =====")
 
-  demoGame = prb.Game(
+ttt = prb.Game(
     prb.TicTacToe(),
     alg.RandomAgent(),
     alg.RandomAgent()
-  )
+)
+ttt.playGame()
 
-  demoGame.playGame()
+print("===== SNAKE =====")
 
-if __name__ == "__main__":
-  run_TicTacToe_demo()
+snake = prb.Game(
+    prb.Snake(),
+    alg.SnakeRandomAgent(),
+    verbose=True,
+    singlePlayer=True
+)
+snake.playGame()
