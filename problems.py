@@ -136,12 +136,15 @@ class Snake:
         self.height = height
 
         self.snake = [(5, 5)]
-        self.food = (2, 2)
-
+        self.food = None
+        self.spawnFood()
+        
         self.score = 0
         self.ticks = -1
 
         self.alive = True
+        
+        self.history = []
       
     def getLegalMoves(self, state=None):
 
@@ -162,11 +165,25 @@ class Snake:
         )
 
         self.snake.insert(0, new_head)
-        self.snake.pop()
+        
+        if new_head == self.food: #Food found!
+            self.score += 1
+            self.spawnFood()
+        else:
+            self.snake.pop()
 
         self.ticks += 1
 
         self.checkCollision()
+        
+        #Save state for training later!
+        self.history.append({
+          "tick": self.ticks,
+          "head": self.snake[0],
+          "food": self.food,
+          "length": len(self.snake),
+          "score": self.score
+        })
 
     def checkCollision(self):
 
@@ -174,6 +191,10 @@ class Snake:
 
         if (r < 0 or c < 0 or r >= self.height or c >= self.width):
               
+            self.alive = False
+            
+        if self.snake[0] in self.snake[1:]:
+    
             self.alive = False
             
     def isTerminal(self, state=None):
@@ -195,6 +216,33 @@ class Snake:
         fr, fc = self.food
         #Draw the food
         cv2.circle(screen, (fc * 20 + 10, fr * 20 + 10), 7, 127, -1 )
+        print(
+          f"Tick:{self.ticks}  "
+          f"Length:{len(self.snake)}  "
+          f"Score:{self.score}"
+        )
         #Show it all
         cv2.imshow("Snake", screen)
-        cv2.waitKey(ms) 
+        cv2.waitKey(ms)
+        
+    def spawnFood(self):
+      while True:
+          r = np.random.randint(self.height)
+          c = np.random.randint(self.width)
+  
+          if (r, c) not in self.snake:
+              self.food = (r, c)
+              return
+
+    #Will use later..        
+    def getFeatures(self):
+    
+        head = self.snake[0]
+    
+        return {
+            "head_x": head[0],
+            "head_y": head[1],
+            "food_x": self.food[0],
+            "food_y": self.food[1],
+            "length": len(self.snake)
+        }
