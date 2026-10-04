@@ -29,8 +29,16 @@ class Game:
     def playGame(self):
         pCur = 0
         while not self.problem.isTerminal():
-            move = self.players[pCur].getMove(self.problem)
-            self.problem.doMove(move)
+          
+            if getattr(self.problem, "simultaneous", False):
+                move0 = self.players[0].getMove(self.problem)
+                move1 = self.players[1].getMove(self.problem)
+                self.problem.doMove((move0, move1))
+                
+            else:
+                move = self.players[pCur].getMove(self.problem)
+                self.problem.doMove(move)
+                
             if self.verbose:
                 self.problem.showState()
             if not self.singlePlayer:
@@ -246,3 +254,142 @@ class Snake:
             "food_y": self.food[1],
             "length": len(self.snake)
         }
+
+class Pong:
+
+    def __init__(self):
+
+        self.width = 400
+        self.height = 300
+
+        self.paddle_width = 10
+        self.paddle_height = 60
+        self.paddle_speed = 10
+
+        self.ball_radius = 8
+
+        self.p0_y = self.height / 2 - self.paddle_height / 2
+        self.p1_y = self.height / 2 - self.paddle_height / 2
+
+        self.ball_x = self.width / 2
+        self.ball_y = self.height / 2
+
+        self.ball_vx = 5
+        self.ball_vy = 3
+
+        self.ticks = -1
+
+        self.alive = True
+        self.winner = -1
+
+        # indicates both players move every tick
+        self.simultaneous = True
+
+    def getLegalMoves(self, state=None):
+
+        # up, stay, down
+        return [-1, 0, 1]
+
+    def doMove(self, move):
+
+        move0, move1 = move
+
+        # move paddles
+        self.p0_y += move0 * self.paddle_speed
+        self.p1_y += move1 * self.paddle_speed
+
+        # keep paddles on screen
+        self.p0_y = max(
+            0,
+            min(self.height - self.paddle_height, self.p0_y)
+        )
+
+        self.p1_y = max(
+            0,
+            min(self.height - self.paddle_height, self.p1_y)
+        )
+
+        # move ball
+        self.ball_x += self.ball_vx
+        self.ball_y += self.ball_vy
+
+        # top wall
+        if self.ball_y < self.ball_radius:
+            self.ball_y = self.ball_radius
+            self.ball_vy = -self.ball_vy
+            
+        # bottom wall
+        if self.ball_y > self.height - self.ball_radius:
+            self.ball_y = self.height - self.ball_radius
+            self.ball_vy = -self.ball_vy
+        
+        # left paddle collision
+        if (self.ball_x <= 20 and
+            self.p0_y <= self.ball_y <= self.p0_y + self.paddle_height
+           ):
+            self.ball_x = 20
+            self.ball_vx = abs(self.ball_vx)
+        
+        # right paddle collision
+        if ( self.ball_x >= self.width - 20 and
+             self.p1_y <= self.ball_y <= self.p1_y + self.paddle_height
+           ):
+            self.ball_x = self.width - 20
+            self.ball_vx = -abs(self.ball_vx)
+        # ball passed left edge
+        if self.ball_x < 0:
+            self.winner = 1
+            self.alive = False
+        
+        # ball passed right edge
+        if self.ball_x > self.width:
+            self.winner = 0
+            self.alive = False
+        
+        self.ticks += 1
+        
+        if self.ticks % 20 == 0:
+          print(
+            f"Ball=({self.ball_x},{self.ball_y}) "
+            f"P0={self.p0_y} "
+            f"P1={self.p1_y}"
+          )
+
+    def isTerminal(self, state=None):
+        return not self.alive
+
+    def getWinner(self, state=None):
+        return self.winner
+
+    def showState(self, ms=30, state=None):
+        screen = np.zeros(
+            (self.height, self.width),
+            dtype=np.uint8
+        )
+        # left paddle
+        cv2.rectangle(
+            screen,
+            (10, int(self.p0_y)),
+            (10 + self.paddle_width,
+             int(self.p0_y + self.paddle_height)),
+            255,
+            -1
+        )
+        # right paddle
+        cv2.rectangle(
+            screen,
+            (self.width - 20, int(self.p1_y)),
+            (self.width - 20 + self.paddle_width,
+             int(self.p1_y + self.paddle_height)),
+            255,
+            -1
+        )
+        # ball
+        cv2.circle(
+            screen,
+            ( int(self.ball_x), int(self.ball_y)),
+            int(self.ball_radius), 255, -1 
+        )
+            
+        cv2.imshow("Pong", screen)
+        cv2.waitKey(ms)

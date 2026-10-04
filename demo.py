@@ -19,3 +19,13 @@ snake = prb.Game(
     singlePlayer=True
 )
 snake.playGame()
+
+print("===== PONG =====")
+
+pongGame = prb.Game(
+    prb.Pong(),
+    alg.RandomAgent(),
+    alg.RandomAgent()
+)
+
+pongGame.playGame()
