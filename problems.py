@@ -361,7 +361,7 @@ class Pong:
     def getWinner(self, state=None):
         return self.winner
 
-    def showState(self, ms=30, state=None):
+    def showState(self, ms=10, state=None):
         screen = np.zeros(
             (self.height, self.width),
             dtype=np.uint8
@@ -393,3 +393,135 @@ class Pong:
             
         cv2.imshow("Pong", screen)
         cv2.waitKey(ms)
+
+    def getDiscreteFeatures(self): #Tabular training data
+        return (
+            int(self.ball_x / 20),
+            int(self.ball_y / 20),
+            int(self.ball_vx > 0),
+            int(self.ball_vy > 0),
+            int(self.p0_y / 20),
+            int(self.p1_y / 20)
+        )
+
+class Agar:
+    def __init__(self):
+        self.width = 500
+        self.height = 500
+
+        self.player_x = self.width / 2
+        self.player_y = self.height / 2
+
+        self.player_mass = 20
+
+        self.food_count = 100
+        self.food = []
+
+        for _ in range(self.food_count):
+
+            self.food.append(
+                (
+                    np.random.randint(0, self.width),
+                    np.random.randint(0, self.height)
+                )
+            )
+
+        self.ticks = -1
+        self.alive = True
+
+    def getLegalMoves(self, state=None):
+        return [
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1)
+        ]
+
+    def doMove(self, move):
+        dx, dy = move
+
+        speed = max(1.5, 8.0 / np.sqrt(self.player_mass))
+
+        self.player_x += dx * speed
+        self.player_y += dy * speed
+
+        self.player_x = max(
+            0,
+            min(self.width, self.player_x)
+        )
+        self.player_y = max(
+            0,
+            min(self.height, self.player_y)
+        )
+        radius = self.getRadius()
+
+        remaining_food = []
+
+        for fx, fy in self.food:
+
+            dist = np.sqrt(
+                (fx - self.player_x) ** 2 +
+                (fy - self.player_y) ** 2
+            )
+
+            if dist <= radius:
+                self.player_mass += 1
+
+            else:
+                remaining_food.append((fx, fy))
+
+        self.food = remaining_food
+
+        while len(self.food) < self.food_count:
+
+            self.food.append(
+                (np.random.randint(0, self.width),
+                 np.random.randint(0, self.height)))
+
+        self.ticks += 1
+
+    def getRadius(self):
+        return int(np.sqrt(self.player_mass) * 2)
+
+    def isTerminal(self, state=None):
+        return False
+
+    def getWinner(self, state=None):
+        return 0
+
+    def getFeatures(self):
+        return {
+            "player_x": self.player_x,
+            "player_y": self.player_y,
+            "player_mass": self.player_mass,
+            "food_count": len(self.food)
+        }
+
+    def getDiscreteFeatures(self):
+        return (
+            int(self.player_x / 25),
+            int(self.player_y / 25),
+            int(self.player_mass / 10)
+        )
+
+    def showState(self, ms=30, state=None):
+        screen = np.zeros(
+            (self.height, self.width),
+            dtype=np.uint8
+        )
+
+        for fx, fy in self.food:
+
+            cv2.circle(screen,(int(fx), int(fy)),2, 180, -1 )
+
+        cv2.circle(screen,( int(self.player_x),int(self.player_y)),
+                            self.getRadius(),255,-1 )
+
+        cv2.imshow("Agar", screen)
+        cv2.waitKey(ms)
+      
+  
