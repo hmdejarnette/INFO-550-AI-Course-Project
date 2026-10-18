@@ -60,7 +60,8 @@ class Game:
 class TicTacToe:
    def __init__(self):
       self.state = np.zeros((3,3))      
-      self.ticks=-1      
+      self.ticks=-1  
+      
    def getLegalMoves(self, state=None):
       if state is None:
          state = self.state
@@ -72,15 +73,18 @@ class TicTacToe:
          for j in range(state.shape[1]):
             if state[i,j]==0:
                moves.append((mark,(i,j)))
-      return moves             
+      return moves       
+    
    def getSuccessor(self, move, state):
       mark = move[0]
       loc = move[1]
       state[loc] = mark
       return state
+    
    def doMove(self,move):
       self.state = self.getSuccessor(move,self.state)
       self.ticks+=1
+      
    def isTerminal(self, state=None):
       if state is None:
          state = self.state         
@@ -91,6 +95,7 @@ class TicTacToe:
       if val!=0:
          terminal = True
       return terminal
+    
    def evalTerminal(self, state=None):
       if state is None:
          state = self.state
@@ -104,6 +109,7 @@ class TicTacToe:
       if np.any(pOneWins):
          val = -1
       return val
+    
    def getWinner(self, state=None):
       if state is None:
          state = self.state
@@ -114,6 +120,7 @@ class TicTacToe:
          return 1
       else:
          return -1
+       
    def showState(self, ms = 1000,state=None):
       if state is None:
          state = self.state  
@@ -135,6 +142,22 @@ class TicTacToe:
       cv2.imshow('TicTacToe',screen)
       cv2.waitKey(ms)
 
+   def getFeatures(self, state, action=None):
+        """
+        State format expected: A sequence/list of 9 state values
+        """
+        features = {"bias": 1.0}
+        
+        # Base board positions
+        for i, val in enumerate(state):
+            features[f"cell_{i}"] = float(val)
+            
+        # Standard state-action interaction
+        if action is not None:
+            features[f"action_{action}"] = 1.0
+            features[f"cell_{action}_x_action"] = float(state[action]) if action < len(state) else 0.0
+            
+        return features
 
 class Snake:
 
@@ -242,18 +265,24 @@ class Snake:
               self.food = (r, c)
               return
 
-    #Will use later..        
-    def getFeatures(self):
-    
-        head = self.snake[0]
-    
-        return {
-            "head_x": head[0],
-            "head_y": head[1],
-            "food_x": self.food[0],
-            "food_y": self.food[1],
-            "length": len(self.snake)
-        }
+    def getFeatures(self, state, action=None):
+      """
+      State format expected: [head_x, head_y, food_x, food_y, velocity_x, velocity_y]
+      """
+      features = {"bias": 1.0}
+      head_x, head_y, food_x, food_y, vx, vy = state
+      
+      features["dist_food_x"] = float(food_x - head_x)
+      features["dist_food_y"] = float(food_y - head_y)
+      features["velocity_x"] = float(vx)
+      features["velocity_y"] = float(vy)
+      
+      if action is not None:
+          features[f"action_{action}"] = 1.0
+          features[f"dist_food_x_x_action_{action}"] = float(food_x - head_x)
+          features[f"dist_food_y_x_action_{action}"] = float(food_y - head_y)
+          
+      return features
 
 class Pong:
 
@@ -394,15 +423,23 @@ class Pong:
         cv2.imshow("Pong", screen)
         cv2.waitKey(ms)
 
-    def getDiscreteFeatures(self): #Tabular training data
-        return (
-            int(self.ball_x / 20),
-            int(self.ball_y / 20),
-            int(self.ball_vx > 0),
-            int(self.ball_vy > 0),
-            int(self.p0_y / 20),
-            int(self.p1_y / 20)
-        )
+    def getFeatures(self, state, action=None):
+      """
+      State format expected: [paddle_y, ball_x, ball_y, ball_vx, ball_vy]
+      """
+      features = {"bias": 1.0}
+      paddle_y, ball_x, ball_y, ball_vx, ball_vy = state
+      
+      features["paddle_y"] = float(paddle_y)
+      features["ball_x"] = float(ball_x)
+      features["ball_y"] = float(ball_y)
+      features["ball_to_paddle_dist_y"] = float(paddle_y - ball_y)
+      
+      if action is not None:
+          features[f"action_{action}"] = 1.0
+          features[f"dist_y_x_action_{action}"] = float(paddle_y - ball_y)
+          
+      return features
 
 class Agar:
     def __init__(self):
@@ -492,21 +529,23 @@ class Agar:
 
     def getWinner(self, state=None):
         return 0
-
-    def getFeatures(self):
-        return {
-            "player_x": self.player_x,
-            "player_y": self.player_y,
-            "player_mass": self.player_mass,
-            "food_count": len(self.food)
-        }
-
-    def getDiscreteFeatures(self):
-        return (
-            int(self.player_x / 25),
-            int(self.player_y / 25),
-            int(self.player_mass / 10)
-        )
+      
+    def getFeatures(self, state, action=None):
+        """
+        State format expected: [player_mass, player_x, player_y, closest_food_x, closest_food_y]
+        """
+        features = {"bias": 1.0}
+        mass, p_x, p_y, f_x, f_y = state
+        
+        features["player_mass"] = float(mass)
+        features["food_dist_x"] = float(f_x - p_x)
+        features["food_dist_y"] = float(f_y - p_y)
+        
+        if action is not None:
+            features[f"action_{action}"] = 1.0
+            features[f"mass_x_action_{action}"] = float(mass)
+            
+        return features
 
     def showState(self, ms=30, state=None):
         screen = np.zeros(
@@ -523,5 +562,3 @@ class Agar:
 
         cv2.imshow("Agar", screen)
         cv2.waitKey(ms)
-      
-  
