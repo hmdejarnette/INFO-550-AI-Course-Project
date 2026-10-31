@@ -442,123 +442,367 @@ class Pong:
       return features
 
 class Agar:
+
     def __init__(self):
-        self.width = 500
-        self.height = 500
 
-        self.player_x = self.width / 2
-        self.player_y = self.height / 2
+        self.width = 50
+        self.height = 25
 
-        self.player_mass = 20
+        self.player_pos = (5, 5)
+        self.enemy_pos = (24, 24)
 
-        self.food_count = 100
+        self.player_mass = 1
+        self.enemy_mass = 1
+
+        self.food_count = 30
         self.food = []
+        # Approximate agario style growth in grid world!
+        self.growthPattern = [
 
-        for _ in range(self.food_count):
+            (0, 0),
 
-            self.food.append(
-                (
-                    np.random.randint(0, self.width),
-                    np.random.randint(0, self.height)
-                )
-            )
-
-        self.ticks = -1
-        self.alive = True
-
-    def getLegalMoves(self, state=None):
-        return [
-            (-1, -1),
-            (-1, 0),
-            (-1, 1),
-            (0, -1),
             (0, 1),
-            (1, -1),
             (1, 0),
-            (1, 1)
+            (0, -1),
+            (-1, 0),
+
+            (-1, 1),
+            (1, 1),
+            (1, -1),
+            (-1, -1),
+
+            (0, 2),
+            (2, 0),
+            (0, -2),
+            (-2, 0),
+
+            (-1, 2),
+            (1, 2),
+            (2, 1),
+            (2, -1),
+            (1, -2),
+            (-1, -2),
+            (-2, -1),
+            (-2, 1),
+
+            (-2, 2),
+            (2, 2),
+            (2, -2),
+            (-2, -2)
         ]
 
-    def doMove(self, move):
-        dx, dy = move
+        while len(self.food) < self.food_count:
 
-        speed = max(1.5, 8.0 / np.sqrt(self.player_mass))
+            pos = (
+                np.random.randint(self.height),
+                np.random.randint(self.width)
+            )
 
-        self.player_x += dx * speed
-        self.player_y += dy * speed
+            if (
+                pos != self.player_pos and
+                pos != self.enemy_pos and
+                pos not in self.food
+            ):
+                self.food.append(pos)
 
-        self.player_x = max(
-            0,
-            min(self.width, self.player_x)
+        self.alive = True
+        self.winner = -1
+        self.ticks = -1
+
+    def getLegalMoves(self, state=None):
+
+        return [
+            (-1, 0),
+            (1, 0),
+            (0, -1),
+            (0, 1)
+        ]
+
+    def spawnFood(self):
+
+        while True:
+
+            pos = (
+                np.random.randint(self.height),
+                np.random.randint(self.width)
+            )
+
+            if (
+                pos != self.player_pos and
+                pos != self.enemy_pos and
+                pos not in self.food
+            ):
+                self.food.append(pos)
+                return
+
+    def getGrowthBounds(self, mass):
+
+        cells = self.growthPattern[:mass]
+
+        min_r = min(dr for dr, dc in cells)
+        max_r = max(dr for dr, dc in cells)
+
+        min_c = min(dc for dr, dc in cells)
+        max_c = max(dc for dr, dc in cells)
+
+        return min_r, max_r, min_c, max_c
+
+    def getOccupiedCells(self, center, mass):
+
+        row, col = center
+
+        cells = []
+
+        for dr, dc in self.growthPattern[:mass]:
+
+            r = row + dr
+            c = col + dc
+
+            if (
+                0 <= r < self.height and
+                0 <= c < self.width
+            ):
+                cells.append((r, c))
+
+        return cells
+
+    def moveEnemy(self):
+
+        moves = self.getLegalMoves()
+
+        move = moves[np.random.randint(len(moves))]
+
+        er, ec = self.enemy_pos
+
+        er += move[0]
+        ec += move[1]
+
+        min_r, max_r, min_c, max_c = \
+            self.getGrowthBounds(self.enemy_mass)
+
+        er = max(
+            -min_r,
+            min(self.height - 1 - max_r, er)
         )
-        self.player_y = max(
-            0,
-            min(self.height, self.player_y)
+
+        ec = max(
+            -min_c,
+            min(self.width - 1 - max_c, ec)
         )
-        radius = self.getRadius()
+
+        self.enemy_pos = (er, ec)
+
+    def eatFood(self):
+
+        player_cells = set(
+            self.getOccupiedCells(
+                self.player_pos,
+                self.player_mass
+            )
+        )
+
+        enemy_cells = set(
+            self.getOccupiedCells(
+                self.enemy_pos,
+                self.enemy_mass
+            )
+        )
 
         remaining_food = []
 
-        for fx, fy in self.food:
+        for food_pos in self.food:
 
-            dist = np.sqrt(
-                (fx - self.player_x) ** 2 +
-                (fy - self.player_y) ** 2
-            )
+            if food_pos in player_cells:
 
-            if dist <= radius:
                 self.player_mass += 1
 
+            elif food_pos in enemy_cells:
+
+                self.enemy_mass += 1
+
             else:
-                remaining_food.append((fx, fy))
+
+                remaining_food.append(food_pos)
 
         self.food = remaining_food
 
         while len(self.food) < self.food_count:
+            self.spawnFood()
 
-            self.food.append(
-                (np.random.randint(0, self.width),
-                 np.random.randint(0, self.height)))
+    def checkCombat(self):
+
+        player_cells = set(
+            self.getOccupiedCells(
+                self.player_pos,
+                self.player_mass
+            )
+        )
+
+        enemy_cells = set(
+            self.getOccupiedCells(
+                self.enemy_pos,
+                self.enemy_mass
+            )
+        )
+
+        overlap = player_cells.intersection(enemy_cells)
+
+        #print(
+        #    f"PlayerMass={self.player_mass} "
+        #    f"EnemyMass={self.enemy_mass} "
+        #    f"Overlap={len(overlap)} "
+        #    f"PlayerCells={len(player_cells)} "
+        #    f"EnemyCells={len(enemy_cells)}"
+        #)
+
+        if len(overlap) == 0:
+            return
+
+        enemy_overlap = (
+            len(overlap) / len(enemy_cells)
+        )
+
+        player_overlap = (
+            len(overlap) / len(player_cells)
+        )
+
+        if (
+            enemy_overlap >= 0.5 and
+            self.player_mass > self.enemy_mass
+        ):
+
+            self.winner = 0
+            self.alive = False
+
+        elif (
+            player_overlap >= 0.5 and
+            self.enemy_mass > self.player_mass
+        ):
+
+            self.winner = 1
+            self.alive = False
+
+    def doMove(self, move):
+
+        dr, dc = move
+
+        pr, pc = self.player_pos
+
+        pr += dr
+        pc += dc
+
+        min_r, max_r, min_c, max_c = \
+            self.getGrowthBounds(self.player_mass)
+
+        pr = max(
+            -min_r,
+            min(self.height - 1 - max_r, pr)
+        )
+
+        pc = max(
+            -min_c,
+            min(self.width - 1 - max_c, pc)
+        )
+
+        self.player_pos = (pr, pc)
+
+        self.moveEnemy()
+
+        self.eatFood()
+
+        self.checkCombat()
 
         self.ticks += 1
 
-    def getRadius(self):
-        return int(np.sqrt(self.player_mass) * 2)
-
     def isTerminal(self, state=None):
-        return False
+
+        return not self.alive
 
     def getWinner(self, state=None):
-        return 0
-      
-    def getFeatures(self, state, action=None):
-        """
-        State format expected: [player_mass, player_x, player_y, closest_food_x, closest_food_y]
-        """
-        features = {"bias": 1.0}
-        mass, p_x, p_y, f_x, f_y = state
-        
-        features["player_mass"] = float(mass)
-        features["food_dist_x"] = float(f_x - p_x)
-        features["food_dist_y"] = float(f_y - p_y)
-        
-        if action is not None:
-            features[f"action_{action}"] = 1.0
-            features[f"mass_x_action_{action}"] = float(mass)
-            
-        return features
 
-    def showState(self, ms=30, state=None):
+        return self.winner
+
+    def getFeatures(self):
+
+        return {
+            "player_row": self.player_pos[0],
+            "player_col": self.player_pos[1],
+            "player_mass": self.player_mass,
+            "enemy_row": self.enemy_pos[0],
+            "enemy_col": self.enemy_pos[1],
+            "enemy_mass": self.enemy_mass
+        }
+    ## Placeholder for eventual Q stuff..
+    def getDiscreteFeatures(self):
+
+        return (
+            self.player_pos[0],
+            self.player_pos[1],
+            self.player_mass,
+            self.enemy_pos[0],
+            self.enemy_pos[1],
+            self.enemy_mass
+        )
+
+    def showState(self, ms=50, state=None):
+
+        cell_size = 20
+
         screen = np.zeros(
-            (self.height, self.width),
+            (
+                self.height * cell_size,
+                self.width * cell_size
+            ),
             dtype=np.uint8
         )
 
-        for fx, fy in self.food:
+        # food
+        for r, c in self.food:
 
-            cv2.circle(screen,(int(fx), int(fy)),2, 180, -1 )
+            cv2.rectangle(
+                screen,
+                (c * cell_size, r * cell_size),
+                (
+                    (c + 1) * cell_size - 1,
+                    (r + 1) * cell_size - 1
+                ),
+                100,
+                -1
+            )
 
-        cv2.circle(screen,( int(self.player_x),int(self.player_y)),
-                            self.getRadius(),255,-1 )
+        # enemy
+        for r, c in self.getOccupiedCells(
+            self.enemy_pos,
+            self.enemy_mass
+        ):
+
+            cv2.rectangle(
+                screen,
+                (c * cell_size, r * cell_size),
+                (
+                    (c + 1) * cell_size - 1,
+                    (r + 1) * cell_size - 1
+                ),
+                180,
+                -1
+            )
+
+        # player
+        for r, c in self.getOccupiedCells(
+            self.player_pos,
+            self.player_mass
+        ):
+
+            cv2.rectangle(
+                screen,
+                (c * cell_size, r * cell_size),
+                (
+                    (c + 1) * cell_size - 1,
+                    (r + 1) * cell_size - 1
+                ),
+                255,
+                -1
+            )
 
         cv2.imshow("Agar", screen)
         cv2.waitKey(ms)

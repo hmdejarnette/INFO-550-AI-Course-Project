@@ -7,9 +7,12 @@ agent = alg.RandomAgent()
 
 for _ in range(1000):
   
+  if agar.isTerminal():
+    print(f"Winner: {agar.getWinner()}")
+    break
   move = agent.getMove(agar)
   agar.doMove(move)
-  agar.showState(10)
+  agar.showState(20)
 
 
 print(
