@@ -445,8 +445,8 @@ class Agar:
 
     def __init__(self):
 
-        self.width = 50
-        self.height = 25
+        self.width = 20
+        self.height = 20
 
         self.player_pos = (5, 5)
         self.enemy_pos = (24, 24)
@@ -454,7 +454,7 @@ class Agar:
         self.player_mass = 1
         self.enemy_mass = 1
 
-        self.food_count = 30
+        self.food_count = 5
         self.food = []
         # Approximate agario style growth in grid world!
         self.growthPattern = [
@@ -685,9 +685,7 @@ class Agar:
     def doMove(self, move):
 
         dr, dc = move
-
         pr, pc = self.player_pos
-
         pr += dr
         pc += dc
 
@@ -705,13 +703,9 @@ class Agar:
         )
 
         self.player_pos = (pr, pc)
-
         self.moveEnemy()
-
         self.eatFood()
-
         self.checkCombat()
-
         self.ticks += 1
 
     def isTerminal(self, state=None):
@@ -736,13 +730,81 @@ class Agar:
     def getDiscreteFeatures(self):
 
         return (
-            self.player_pos[0],
-            self.player_pos[1],
-            self.player_mass,
-            self.enemy_pos[0],
-            self.enemy_pos[1],
-            self.enemy_mass
+            self.getNearestFoodDirection(),
+            self.getEnemyDirection(),
+            self.getEnemyDistanceBucket(),
+            self.getMassRelation()
         )
+        
+    def getNearestFoodDirection(self): 
+    
+        pr, pc = self.player_pos
+    
+        nearest_food = None
+        nearest_dist = float("inf")
+    
+        for fr, fc in self.food:
+            dist = abs(fr - pr) + abs(fc - pc)
+            if dist < nearest_dist:
+                nearest_dist = dist
+                nearest_food = (fr, fc)
+    
+        if nearest_food is None:
+            return (0, 0)
+    
+        fr, fc = nearest_food
+        dr = fr - pr
+        dc = fc - pc
+    
+        return (
+            int(np.sign(dr)),
+            int(np.sign(dc))
+        )
+
+    def getEnemyDirection(self):
+    
+        pr, pc = self.player_pos
+        er, ec = self.enemy_pos
+    
+        dr = er - pr
+        dc = ec - pc
+    
+        return (
+            int(np.sign(dr)),
+            int(np.sign(dc))
+        )
+
+    def getEnemyDistanceBucket(self):
+    # 0 = near
+    # 1 = medium
+    # 2 = far
+        pr, pc = self.player_pos
+        er, ec = self.enemy_pos
+    
+        dist = abs(er - pr) + abs(ec - pc)
+    
+        if dist <= 2:
+            return 0
+    
+        elif dist <= 5:
+            return 1
+    
+        else:
+            return 2
+
+    def getMassRelation(self):
+    #0 = smaller
+    #1 = same
+    #2 =bigger
+    
+        if self.player_mass < self.enemy_mass:
+            return 0
+    
+        elif self.player_mass == self.enemy_mass:
+            return 1
+    
+        else:
+            return 2
 
     def showState(self, ms=50, state=None):
 

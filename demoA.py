@@ -12,7 +12,7 @@ for _ in range(1000):
     break
   move = agent.getMove(agar)
   agar.doMove(move)
-  agar.showState(20)
+  agar.showState(10)
 
 
 print(
