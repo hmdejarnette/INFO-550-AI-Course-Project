@@ -142,22 +142,12 @@ class TicTacToe:
       cv2.imshow('TicTacToe',screen)
       cv2.waitKey(ms)
 
-   def getFeatures(self, state, action=None):
-        """
-        State format expected: A sequence/list of 9 state values
-        """
-        features = {"bias": 1.0}
-        
-        # Base board positions
-        for i, val in enumerate(state):
-            features[f"cell_{i}"] = float(val)
-            
-        # Standard state-action interaction
-        if action is not None:
-            features[f"action_{action}"] = 1.0
-            features[f"cell_{action}_x_action"] = float(state[action]) if action < len(state) else 0.0
-            
-        return features
+   # Placeholder..
+   def getDiscreteFeatures(self):
+    
+      return tuple(
+          self.state.flatten().astype(int)
+      )
 
 class Snake:
 
@@ -264,25 +254,69 @@ class Snake:
           if (r, c) not in self.snake:
               self.food = (r, c)
               return
+            
+    def getDiscreteFeatures(self):
+    
+        return (
+            self.getFoodDirection(),
+            self.getDangerState(),
+            self.getLengthBucket()
+        )
+  
+    def getFoodDirection(self):
+    
+        hr, hc = self.snake[0]
+        fr, fc = self.food
+    
+        return (
+            int(np.sign(fr - hr)),
+            int(np.sign(fc - hc))
+        )
 
-    def getFeatures(self, state, action=None):
-      """
-      State format expected: [head_x, head_y, food_x, food_y, velocity_x, velocity_y]
-      """
-      features = {"bias": 1.0}
-      head_x, head_y, food_x, food_y, vx, vy = state
-      
-      features["dist_food_x"] = float(food_x - head_x)
-      features["dist_food_y"] = float(food_y - head_y)
-      features["velocity_x"] = float(vx)
-      features["velocity_y"] = float(vy)
-      
-      if action is not None:
-          features[f"action_{action}"] = 1.0
-          features[f"dist_food_x_x_action_{action}"] = float(food_x - head_x)
-          features[f"dist_food_y_x_action_{action}"] = float(food_y - head_y)
-          
-      return features
+    def getDangerState(self):
+    
+        return (
+            self.isDanger((-1,0)),
+            self.isDanger((1,0)),
+            self.isDanger((0,-1)),
+            self.isDanger((0,1))
+        )
+    
+    def isDanger(self, move):
+    
+        hr, hc = self.snake[0]
+    
+        nr = hr + move[0]
+        nc = hc + move[1]
+    
+        if (
+            nr < 0 or
+            nr >= self.height or
+            nc < 0 or
+            nc >= self.width
+        ):
+            return 1
+    
+        if (nr, nc) in self.snake:
+            return 1
+    
+        return 0
+    
+    def getLengthBucket(self):
+    
+        length = len(self.snake)
+    
+        if length <= 3:
+            return 0
+    
+        elif length <= 6:
+            return 1
+    
+        elif length <= 10:
+            return 2
+    
+        else:
+            return 3
 
 class Pong:
 
@@ -423,23 +457,65 @@ class Pong:
         cv2.imshow("Pong", screen)
         cv2.waitKey(ms)
 
-    def getFeatures(self, state, action=None):
-      """
-      State format expected: [paddle_y, ball_x, ball_y, ball_vx, ball_vy]
-      """
-      features = {"bias": 1.0}
-      paddle_y, ball_x, ball_y, ball_vx, ball_vy = state
+    # Placeholders for later..
+    def getDiscreteFeatures(self):
+    
+        return (
+            self.getBallDirection(),
+            self.getHorizontalDirection(),
+            self.getVerticalDirection(),
+            self.getDistanceBucket()
+        )
+
+    def getBallDirection(self):
+    # -1 = above
+    # 0 = even
+    # 1 = below
+        paddle_center = (
+            self.p0_y +
+            self.paddle_height / 2
+        )
+    
+        diff = self.ball_y - paddle_center
+    
+        if diff < -20:
+            return -1
+    
+        elif diff > 20:
+            return 1
+    
+        else:
+            return 0
+
+    def getHorizontalDirection(self):
+    # -1 = approaching
+    # 1 = leaving
+        if self.ball_vx < 0:
+            return -1
+    
+        return 1
       
-      features["paddle_y"] = float(paddle_y)
-      features["ball_x"] = float(ball_x)
-      features["ball_y"] = float(ball_y)
-      features["ball_to_paddle_dist_y"] = float(paddle_y - ball_y)
-      
-      if action is not None:
-          features[f"action_{action}"] = 1.0
-          features[f"dist_y_x_action_{action}"] = float(paddle_y - ball_y)
-          
-      return features
+    def getVerticalDirection(self):
+    
+        if self.ball_vy < 0:
+            return -1
+    
+        return 1      
+
+    def getDistanceBucket(self):
+    # 0 = close
+    # 1 = medium
+    # 2 = far
+        dist = self.ball_x
+    
+        if dist <= 60:
+            return 0
+    
+        elif dist <= 150:
+            return 1
+    
+        else:
+            return 2
 
 class Agar:
 
@@ -716,16 +792,6 @@ class Agar:
 
         return self.winner
 
-    def getFeatures(self):
-
-        return {
-            "player_row": self.player_pos[0],
-            "player_col": self.player_pos[1],
-            "player_mass": self.player_mass,
-            "enemy_row": self.enemy_pos[0],
-            "enemy_col": self.enemy_pos[1],
-            "enemy_mass": self.enemy_mass
-        }
     ## Placeholder for eventual Q stuff..
     def getDiscreteFeatures(self):
 
