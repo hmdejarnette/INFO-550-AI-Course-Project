@@ -35,20 +35,33 @@ def compare_random_agents(num_games=100):
     print(f"P1 Wins : {winsOne}")
     print(f"Draws   : {draws}")
 
-def train_tictactoe(num_games=1000):
+
+def train_tictactoe(
+    num_games=10000,
+    eval_interval=500
+):
+
     learner = alg.TabularAgent()
+
     opponent = alg.RandomAgent()
 
-    wins = 0
-    losses = 0
-    draws = 0
+    history = {
+        "games": [],
+        "states": [],
+        "avg_q": [],
+        "win_rate": []
+    }
 
     for game_num in range(num_games):
+
         game = prb.TicTacToe()
 
         while not game.isTerminal():
+
             state = learner.initializeState(game)
+
             action = learner.getMove(game)
+
             game.doMove(action)
 
             if game.isTerminal():
@@ -56,15 +69,12 @@ def train_tictactoe(num_games=1000):
 
                 if winner == 0:
                     reward = 1
-                    wins += 1
 
                 elif winner == -1:
                     reward = 0
-                    draws += 1
 
                 else:
                     reward = -1
-                    losses += 1
 
                 learner.update(
                     state,
@@ -73,11 +83,12 @@ def train_tictactoe(num_games=1000):
                     reward,
                     []
                 )
-
                 break
 
             enemy_move = opponent.getMove(game)
+
             game.doMove(enemy_move)
+
             next_state = game.getDiscreteFeatures()
 
             if game.isTerminal():
@@ -85,15 +96,12 @@ def train_tictactoe(num_games=1000):
 
                 if winner == 0:
                     reward = 1
-                    wins += 1
 
                 elif winner == -1:
                     reward = 0
-                    draws += 1
 
                 else:
                     reward = -1
-                    losses += 1
 
                 learner.update(
                     state,
@@ -102,7 +110,6 @@ def train_tictactoe(num_games=1000):
                     reward,
                     []
                 )
-
                 break
 
             learner.update(
@@ -112,32 +119,90 @@ def train_tictactoe(num_games=1000):
                 0,
                 game.getLegalMoves()
             )
+        learner.decayEpsilon()
 
-        if (game_num + 1) % 100 == 0:
+        if (game_num + 1) % eval_interval == 0:
+            win_rate = evaluate_tictactoe(
+                learner,
+                100
+            )
+            history["games"].append(
+                game_num + 1
+            )
+            history["states"].append(
+                learner.getTableSize()
+            )
+            history["avg_q"].append(
+                learner.getAverageQ()
+            )
+            history["win_rate"].append(
+                win_rate
+            )
             print(
-                f"Games: {game_num + 1} "
-                f"States: {len(learner.qTable)}"
+                f"Games:{game_num+1} "
+                f"States:{learner.getTableSize()} "
+                f"Win%:{win_rate:.2f}"
             )
 
-    print("\n===== TRAINING COMPLETE =====\n")
+    return learner, history
 
-    print(f"Wins   : {wins}")
-    print(f"Losses : {losses}")
-    print(f"Draws  : {draws}")
+def evaluate_tictactoe(
+    learner,
+    num_games=1000
+):
 
-    print(
-        f"States Learned: "
-        f"{len(learner.qTable)}"
-    )
+    learner.setEvaluationMode()
 
-    return learner
+    old_epsilon = learner.epsilon
+    learner.epsilon = 0
+
+    opponent = alg.RandomAgent()
+
+    wins = 0
+
+    for _ in range(num_games):
+        game = prb.TicTacToe()
+
+        while not game.isTerminal():
+            move = learner.getMove(game)
+            game.doMove(move)
+
+            if game.isTerminal():
+                break
+
+            enemy_move = opponent.getMove(game)
+
+            game.doMove(enemy_move)
+
+        if game.getWinner() == 0:
+            wins += 1
+
+    learner.epsilon = old_epsilon
+
+    learner.setTrainingMode()
+
+    return wins / num_games
+
 
 if __name__ == "__main__":
 
-    if 0 in compsToRun:
+    learner, history = train_tictactoe(
+        num_games=10000,
+        eval_interval=500
+    )
 
-        compare_random_agents()
+    print("\n===== HISTORY =====\n")
 
-    if 1 in compsToRun:
+    for g, s, q, w in zip(
+        history["games"],
+        history["states"],
+        history["avg_q"],
+        history["win_rate"]
+    ):
 
-        train_tictactoe(1000)
+        print(
+            f"Games:{g:5d} "
+            f"States:{s:5d} "
+            f"AvgQ:{q:.3f} "
+            f"Win%:{w:.3f}"
+        )

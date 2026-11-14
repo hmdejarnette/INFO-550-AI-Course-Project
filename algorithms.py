@@ -24,7 +24,7 @@ class TabularAgent:
         self,
         alpha=0.1,
         gamma=0.95,
-        epsilon=0.1
+        epsilon=0.4
     ):
 
         self.qTable = {}
@@ -32,6 +32,7 @@ class TabularAgent:
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
+        self.learningEnabled = True
 
     def __str__(self):
         return "Tabular Q Agent"
@@ -80,6 +81,9 @@ class TabularAgent:
         next_legal_moves
     ):
 
+        if not self.learningEnabled:
+            return
+
         if next_state not in self.qTable:
             self.qTable[next_state] = {}
 
@@ -104,3 +108,39 @@ class TabularAgent:
         )
 
         self.qTable[state][action] = updated_q
+
+    def setTrainingMode(self):
+        self.learningEnabled = True
+
+    def setEvaluationMode(self):
+        self.learningEnabled = False
+
+    def decayEpsilon(
+        self,
+        decayRate=0.9995,
+        minimum=0.01
+    ):
+
+        self.epsilon = max(
+            minimum,
+            self.epsilon * decayRate
+        )
+
+    def getTableSize(self):
+        return len(self.qTable)
+
+    def getAverageQ(self):
+        total = 0
+        count = 0
+
+        for state in self.qTable:
+
+            for action in self.qTable[state]:
+
+                total += self.qTable[state][action]
+                count += 1
+
+        if count == 0:
+            return 0
+
+        return total / count
