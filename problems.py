@@ -166,15 +166,67 @@ class Snake:
         self.alive = True
         
         self.history = []
-      
+        
     def getLegalMoves(self, state=None):
-
-        return [
-            (-1, 0),  # up
-            (1, 0),   # down
-            (0, -1),  # left
-            (0, 1)    # right
+        # (-1,0) = UP
+        # ( 1,0) = DOWN
+        # (0,-1) = LEFT
+        # (0, 1) = RIGHT
+        #
+        # "Driving directly into a wall is bad."
+        #
+        # Therefore, if at least one non-fatal move
+        # exists, we only return the survivable actions.
+        #
+        # If the snake is completely trapped, return all
+        # actions so the game can terminate normally.
+    
+        candidates = [
+            (-1, 0),
+            (1, 0),
+            (0, -1),
+            (0, 1)
         ]
+    
+        head_r, head_c = self.snake[0] # head row & col
+    
+        safe_moves = []
+    
+        for move in candidates:
+    
+            nr = head_r + move[0]
+            nc = head_c + move[1]
+    
+            # Reject wall collisions
+    
+            if (
+                nr < 0 or
+                nr >= self.height or
+                nc < 0 or
+                nc >= self.width
+            ):
+                continue
+    
+            # Reject body collisions
+    
+            if (nr, nc) in self.snake:
+    
+                continue
+    
+            safe_moves.append(move)
+    
+        # At least one safe move exists
+        # -> only expose safe actions
+    
+        if len(safe_moves) > 0:
+    
+            return safe_moves
+    
+        # No safe moves remain
+        # -> allow terminal behavior
+    
+        return candidates
+
 
     def doMove(self, move):
 

@@ -2,7 +2,7 @@ import problems as prb
 import algorithms as alg
 
 
-compsToRun = [1]
+compsToRun = [1,2]
 
 
 def compare_random_agents(num_games=100):
@@ -183,26 +183,158 @@ def evaluate_tictactoe(
 
     return wins / num_games
 
+def train_snake(
+    num_games=100,
+    eval_interval=25
+):
+
+    learner = alg.TabularAgent()
+
+    history = {
+        "games": [],
+        "states": [],
+        "avg_score": [],
+        "avg_lifetime": []
+    }
+
+    for game_num in range(num_games):
+        snake = prb.Snake()
+        previous_score = 0
+
+        while not snake.isTerminal():
+            state = learner.initializeState(snake)
+            action = learner.getMove(snake)
+            snake.doMove(action)
+            next_state = snake.getDiscreteFeatures()
+            reward = 0
+
+            # Food reward
+            if snake.score > previous_score:
+                reward = 1
+                previous_score = snake.score
+
+            # Death penalty
+            if snake.isTerminal():
+                reward = -1
+
+            learner.update(
+                state,
+                action,
+                next_state,
+                reward,
+                snake.getLegalMoves()
+            )
+
+        learner.decayEpsilon()
+
+        if (game_num + 1) % eval_interval == 0:
+            avg_score, avg_lifetime = evaluate_snake(
+                learner,
+                100
+            )
+
+            history["games"].append(
+                game_num + 1
+            )
+
+            history["states"].append(
+                learner.getTableSize()
+            )
+
+            history["avg_score"].append(
+                avg_score
+            )
+
+            history["avg_lifetime"].append(
+                avg_lifetime
+            )
+
+            print(
+                f"Games:{game_num+1} "
+                f"States:{learner.getTableSize()} "
+                f"Score:{avg_score:.2f} "
+                f"Life:{avg_lifetime:.2f}"
+            )
+
+    return learner, history
+
+def evaluate_snake(
+    learner,
+    num_games=100
+):
+
+    learner.setEvaluationMode()
+    old_epsilon = learner.epsilon
+    learner.epsilon = 0
+    total_score = 0
+    total_lifetime = 0
+
+    for _ in range(num_games):
+        snake = prb.Snake()
+        lifetime = 0
+        
+        while not snake.isTerminal():
+            move = learner.getMove(snake)
+            snake.doMove(move)
+            lifetime += 1
+        total_score += snake.score
+        total_lifetime += lifetime
+    learner.epsilon = old_epsilon
+    learner.setTrainingMode()
+
+    return (
+        total_score / num_games,
+        total_lifetime / num_games
+    )
+
 
 if __name__ == "__main__":
 
-    learner, history = train_tictactoe(
-        num_games=10000,
-        eval_interval=500
-    )
+    if 0 in compsToRun:
+        compare_random_agents()
 
-    print("\n===== HISTORY =====\n")
-
-    for g, s, q, w in zip(
-        history["games"],
-        history["states"],
-        history["avg_q"],
-        history["win_rate"]
-    ):
-
-        print(
-            f"Games:{g:5d} "
-            f"States:{s:5d} "
-            f"AvgQ:{q:.3f} "
-            f"Win%:{w:.3f}"
+    if 1 in compsToRun:
+        print("\n===== TICTACTOE TRAINING! =====\n")
+        learner, history = train_tictactoe(
+            num_games=10000,
+            eval_interval=500
         )
+
+        print("\n===== TICTACTOE HISTORY =====\n")
+
+        for g, s, q, w in zip(
+            history["games"],
+            history["states"],
+            history["avg_q"],
+            history["win_rate"]
+        ):
+
+            print(
+                f"Games:{g:5d} "
+                f"States:{s:5d} "
+                f"AvgQ:{q:.3f} "
+                f"Win%:{w:.3f}"
+            )
+
+    if 2 in compsToRun:
+        print("\n===== SNAKE TRAINING! =====\n")
+        learner, history = train_snake(
+            num_games=5000,
+            eval_interval=250
+        )
+
+        print("\n===== SNAKE HISTORY =====\n")
+
+        for g, s, score, life in zip(
+            history["games"],
+            history["states"],
+            history["avg_score"],
+            history["avg_lifetime"]
+        ):
+
+            print(
+                f"Games:{g:5d} "
+                f"States:{s:5d} "
+                f"Score:{score:.2f} "
+                f"Life:{life:.2f}"
+            )
