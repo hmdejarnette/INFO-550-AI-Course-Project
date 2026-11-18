@@ -2,7 +2,7 @@ import problems as prb
 import algorithms as alg
 
 
-compsToRun = [1,2]
+compsToRun = [2]
 
 
 def compare_random_agents(num_games=100):
@@ -200,8 +200,14 @@ def train_snake(
     for game_num in range(num_games):
         snake = prb.Snake()
         previous_score = 0
-
-        while not snake.isTerminal():
+  
+        lifetime = 0
+        max_steps = 1000
+        
+        while (
+            not snake.isTerminal()
+            and lifetime < max_steps # simplest way I found to reduce inf loops
+        ):
             state = learner.initializeState(snake)
             action = learner.getMove(snake)
             snake.doMove(action)
@@ -272,8 +278,12 @@ def evaluate_snake(
     for _ in range(num_games):
         snake = prb.Snake()
         lifetime = 0
+        max_steps = 1000
         
-        while not snake.isTerminal():
+        while (
+            not snake.isTerminal()
+            and lifetime < max_steps # simplest way I found to reduce inf loops
+        ):
             move = learner.getMove(snake)
             snake.doMove(move)
             lifetime += 1

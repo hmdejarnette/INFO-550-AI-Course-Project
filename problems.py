@@ -311,10 +311,11 @@ class Snake:
     
         return (
             self.getFoodDirection(),
+            self.getFoodDistanceBucket(),
             self.getDangerState(),
             self.getLengthBucket()
         )
-  
+      
     def getFoodDirection(self):
     
         hr, hc = self.snake[0]
@@ -369,6 +370,22 @@ class Snake:
     
         else:
             return 3
+          
+    def getFoodDistanceBucket(self):
+    
+        hr, hc = self.snake[0]
+        fr, fc = self.food
+    
+        dist = abs(fr - hr) + abs(fc - hc)
+    
+        if dist <= 2:
+            return 0
+    
+        elif dist <= 5:
+            return 1
+    
+        else:
+            return 2
 
 class Pong:
 
