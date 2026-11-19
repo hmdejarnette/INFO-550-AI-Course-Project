@@ -479,13 +479,6 @@ class Pong:
             self.alive = False
         
         self.ticks += 1
-        
-        if self.ticks % 20 == 0:
-          print(
-            f"Ball=({self.ball_x},{self.ball_y}) "
-            f"P0={self.p0_y} "
-            f"P1={self.p1_y}"
-          )
 
     def isTerminal(self, state=None):
         return not self.alive

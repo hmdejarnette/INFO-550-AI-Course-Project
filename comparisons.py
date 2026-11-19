@@ -2,7 +2,7 @@ import problems as prb
 import algorithms as alg
 
 
-compsToRun = [2]
+compsToRun = [3]
 
 
 def compare_random_agents(num_games=100):
@@ -298,6 +298,138 @@ def evaluate_snake(
     )
 
 
+def train_pong(
+    num_games=5000,
+    eval_interval=250
+):
+
+    learner = alg.TabularAgent()
+
+    opponent = alg.RandomAgent()
+
+    history = {
+        "games": [],
+        "states": [],
+        "win_rate": []
+    }
+
+    for game_num in range(num_games):
+
+        pong = prb.Pong()
+
+        while not pong.isTerminal():
+
+            state = learner.initializeState(pong)
+
+            action = learner.getMove(pong)
+
+            enemy_action = opponent.getMove(pong)
+
+            pong.doMove(
+                (
+                    action,
+                    enemy_action
+                )
+            )
+
+            next_state = pong.getDiscreteFeatures()
+
+            reward = 0
+
+            if pong.isTerminal():
+
+                winner = pong.getWinner()
+
+                if winner == 0:
+
+                    reward = 10
+
+                elif winner == 1:
+
+                    reward = -10
+
+            learner.update(
+                state,
+                action,
+                next_state,
+                reward,
+                pong.getLegalMoves()
+            )
+
+        learner.decayEpsilon()
+
+        if (game_num + 1) % eval_interval == 0:
+
+            win_rate = evaluate_pong(
+                learner,
+                100
+            )
+
+            history["games"].append(
+                game_num + 1
+            )
+
+            history["states"].append(
+                learner.getTableSize()
+            )
+
+            history["win_rate"].append(
+                win_rate
+            )
+
+            print(
+                f"Games:{game_num+1} "
+                f"States:{learner.getTableSize()} "
+                f"WinRate:{win_rate:.3f}"
+            )
+
+    return learner, history
+
+
+def evaluate_pong(
+    learner,
+    num_games=100
+):
+
+    learner.setEvaluationMode()
+
+    old_epsilon = learner.epsilon
+
+    learner.epsilon = 0
+
+    opponent = alg.RandomAgent()
+
+    wins = 0
+
+    for _ in range(num_games):
+
+        pong = prb.Pong()
+
+        while not pong.isTerminal():
+
+            action = learner.getMove(pong)
+
+            enemy_action = opponent.getMove(pong)
+
+            pong.doMove(
+                (
+                    action,
+                    enemy_action
+                )
+            )
+
+        if pong.getWinner() == 0:
+
+            wins += 1
+
+    learner.epsilon = old_epsilon
+
+    learner.setTrainingMode()
+
+    return wins / num_games
+
+
+
 if __name__ == "__main__":
 
     if 0 in compsToRun:
@@ -347,4 +479,28 @@ if __name__ == "__main__":
                 f"States:{s:5d} "
                 f"Score:{score:.2f} "
                 f"Life:{life:.2f}"
+            )
+    if 3 in compsToRun:
+        print(
+            "\n===== PONG TRAINING! =====\n"
+        )
+    
+        learner, history = train_pong(
+            num_games=5000,
+            eval_interval=250
+        )
+    
+        print(
+            "\n===== PONG HISTORY =====\n"
+        )
+    
+        for g, s, w in zip(
+            history["games"],
+            history["states"],
+            history["win_rate"]
+        ):
+            print(
+                f"Games:{g:5d} "
+                f"States:{s:5d} "
+                f"WinRate:{w:.3f}"
             )
