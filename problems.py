@@ -388,96 +388,110 @@ class Snake:
             return 2
 
 class Pong:
-
-    def __init__(self):
-
-        self.width = 400
-        self.height = 300
-
-        self.paddle_width = 10
-        self.paddle_height = 60
-        self.paddle_speed = 10
-
-        self.ball_radius = 8
-
-        self.p0_y = self.height / 2 - self.paddle_height / 2
-        self.p1_y = self.height / 2 - self.paddle_height / 2
-
-        self.ball_x = self.width / 2
-        self.ball_y = self.height / 2
-
-        self.ball_vx = 5
-        self.ball_vy = 3
-
-        self.ticks = -1
-
+    
+    def __init__(
+        self,
+        width=40,
+        height=20,
+        numBalls=4
+        ):
+    
+        self.width = width
+        self.height = height
+    
+        self.paddleHeight = 4
+    
+        self.p0_y = self.height // 2
+        self.p1_y = self.height // 2
+    
+        self.balls = []
+    
+        for _ in range(numBalls):
+            self.balls.append({
+    
+                "x": self.width // 2,
+    
+                "y": self.height // 2,
+    
+                "vx": np.random.choice([-1, 1]),
+    
+                "vy": np.random.choice([-1, 1])
+    
+            })
+    
         self.alive = True
         self.winner = -1
-
-        # indicates both players move every tick
-        self.simultaneous = True
+    
+        self.ticks = -1
 
     def getLegalMoves(self, state=None):
+        return [
+            -1,  # up
+            0,   # stay
+            1    # down
+        ]
 
-        # up, stay, down
-        return [-1, 0, 1]
+    def doMove(self, moves):
+        p0_move, p1_move = moves
 
-    def doMove(self, move):
+        self.p0_y += p0_move
+        self.p1_y += p1_move
 
-        move0, move1 = move
-
-        # move paddles
-        self.p0_y += move0 * self.paddle_speed
-        self.p1_y += move1 * self.paddle_speed
-
-        # keep paddles on screen
         self.p0_y = max(
             0,
-            min(self.height - self.paddle_height, self.p0_y)
+            min(
+                self.height - self.paddleHeight,
+                self.p0_y
+            )
         )
 
         self.p1_y = max(
             0,
-            min(self.height - self.paddle_height, self.p1_y)
+            min(
+                self.height - self.paddleHeight,
+                self.p1_y
+            )
         )
 
-        # move ball
-        self.ball_x += self.ball_vx
-        self.ball_y += self.ball_vy
+        for ball in self.balls:
+            ball["x"] += ball["vx"]
+            ball["y"] += ball["vy"]
 
-        # top wall
-        if self.ball_y < self.ball_radius:
-            self.ball_y = self.ball_radius
-            self.ball_vy = -self.ball_vy
-            
-        # bottom wall
-        if self.ball_y > self.height - self.ball_radius:
-            self.ball_y = self.height - self.ball_radius
-            self.ball_vy = -self.ball_vy
-        
-        # left paddle collision
-        if (self.ball_x <= 20 and
-            self.p0_y <= self.ball_y <= self.p0_y + self.paddle_height
-           ):
-            self.ball_x = 20
-            self.ball_vx = abs(self.ball_vx)
-        
-        # right paddle collision
-        if ( self.ball_x >= self.width - 20 and
-             self.p1_y <= self.ball_y <= self.p1_y + self.paddle_height
-           ):
-            self.ball_x = self.width - 20
-            self.ball_vx = -abs(self.ball_vx)
-        # ball passed left edge
-        if self.ball_x < 0:
-            self.winner = 1
-            self.alive = False
-        
-        # ball passed right edge
-        if self.ball_x > self.width:
-            self.winner = 0
-            self.alive = False
-        
+            # Top / bottom wall bounce
+            if (
+                ball["y"] <= 0 or
+                ball["y"] >= self.height - 1
+            ):
+
+                ball["vy"] *= -1
+
+            # Left paddle
+            if (
+                ball["x"] <= 1 and
+                self.p0_y <= ball["y"] <= self.p0_y + self.paddleHeight
+            ):
+
+                ball["vx"] *= -1
+
+            # Right paddle
+            if (
+                ball["x"] >= self.width - 2 and
+                self.p1_y <= ball["y"] <= self.p1_y + self.paddleHeight
+            ):
+
+                ball["vx"] *= -1
+
+            # Score conditions
+            if ball["x"] < 0:
+
+                self.alive = False
+                self.winner = 1
+
+            elif ball["x"] > self.width:
+
+                self.alive = False
+                self.winner = 0
+
         self.ticks += 1
 
     def isTerminal(self, state=None):
@@ -486,98 +500,211 @@ class Pong:
     def getWinner(self, state=None):
         return self.winner
 
-    def showState(self, ms=10, state=None):
+    def showState(self, ms=50):
         screen = np.zeros(
-            (self.height, self.width),
+            (
+                self.height * 20,
+                self.width * 20
+            ),
             dtype=np.uint8
         )
-        # left paddle
+
+        # Left paddle
         cv2.rectangle(
+
             screen,
-            (10, int(self.p0_y)),
-            (10 + self.paddle_width,
-             int(self.p0_y + self.paddle_height)),
+
+            (0, self.p0_y * 20),
+
+            (
+                19,
+                self.p0_y * 20 +
+                self.paddleHeight * 20
+            ),
+
             255,
+
             -1
         )
-        # right paddle
+
+        # Right paddle
         cv2.rectangle(
+
             screen,
-            (self.width - 20, int(self.p1_y)),
-            (self.width - 20 + self.paddle_width,
-             int(self.p1_y + self.paddle_height)),
+
+            (
+                self.width * 20 - 20,
+                self.p1_y * 20
+            ),
+
+            (
+                self.width * 20 - 1,
+                self.p1_y * 20 +
+                self.paddleHeight * 20
+            ),
+
             255,
+
             -1
         )
-        # ball
-        cv2.circle(
-            screen,
-            ( int(self.ball_x), int(self.ball_y)),
-            int(self.ball_radius), 255, -1 
+
+        # All balls
+        for ball in self.balls:
+
+            cv2.circle(
+
+                screen,
+
+                (
+                    int(ball["x"] * 20),
+                    int(ball["y"] * 20)
+                ),
+
+                5,
+
+                127,
+
+                -1
+            )
+
+        cv2.imshow(
+            "Pong",
+            screen
         )
-            
-        cv2.imshow("Pong", screen)
+
         cv2.waitKey(ms)
 
-    # Placeholders for later..
-    def getDiscreteFeatures(self):
-    
-        return (
-            self.getBallDirection(),
-            self.getHorizontalDirection(),
-            self.getVerticalDirection(),
-            self.getDistanceBucket()
-        )
+    def getPriorityBall(self):
+        priority_ball = self.balls[0]
+
+        smallest_distance = float("inf")
+
+        for ball in self.balls:
+
+            distance = abs(ball["x"])
+
+            if distance < smallest_distance:
+
+                smallest_distance = distance
+
+                priority_ball = ball
+
+        return priority_ball
 
     def getBallDirection(self):
-    # -1 = above
-    # 0 = even
-    # 1 = below
+        ball = self.getPriorityBall()
+
         paddle_center = (
             self.p0_y +
-            self.paddle_height / 2
+            self.paddleHeight / 2
         )
-    
-        diff = self.ball_y - paddle_center
-    
-        if diff < -20:
+
+        diff = ball["y"] - paddle_center
+
+        if diff < -2:
+
             return -1
-    
-        elif diff > 20:
+
+        elif diff > 2:
+
             return 1
-    
+
         else:
+
             return 0
 
     def getHorizontalDirection(self):
-    # -1 = approaching
-    # 1 = leaving
-        if self.ball_vx < 0:
+        ball = self.getPriorityBall()
+
+        if ball["vx"] < 0:
+
             return -1
-    
+
         return 1
-      
+
     def getVerticalDirection(self):
-    
-        if self.ball_vy < 0:
+        ball = self.getPriorityBall()
+
+        if ball["vy"] < 0:
+
             return -1
-    
-        return 1      
+
+        return 1
 
     def getDistanceBucket(self):
-    # 0 = close
-    # 1 = medium
-    # 2 = far
-        dist = self.ball_x
     
-        if dist <= 60:
+        ball = self.getPriorityBall()
+    
+        dist = ball["x"]
+    
+        if dist < 5:
             return 0
     
-        elif dist <= 150:
+        elif dist < 10:
+            return 1
+    
+        elif dist < 15:
+            return 2
+    
+        elif dist < 20:
+            return 3
+    
+        return 4
+  
+    def getPaddleBucket(self):
+        center = (
+            self.p0_y +
+            self.paddleHeight / 2
+        )
+    
+        if center < self.height / 3:
+            return 0
+    
+        elif center < 2 * self.height / 3:
             return 1
     
         else:
             return 2
+    
+    def getPriorityBall(self):
+        # Choose the ball that is closest to
+        # the player's paddle and moving toward it.
+        approaching = []
+    
+        for ball in self.balls:
+    
+            if ball["vx"] < 0:
+    
+                approaching.append(ball)
+    
+        # Prefer an approaching ball
+    
+        if len(approaching) > 0:
+    
+            return min(
+                approaching,
+                key=lambda b: b["x"]
+            )
+    
+        # Otherwise use whichever ball is
+        # closest to our paddle.
+    
+        return min(
+            self.balls,
+            key=lambda b: b["x"]
+        )
+
+
+    def getDiscreteFeatures(self):
+
+        return (
+            self.getBallDirection(),
+            self.getHorizontalDirection(),
+            self.getVerticalDirection(),
+            self.getDistanceBucket(),
+            self.getPaddleBucket()
+        )
+        
 
 class Agar:
 

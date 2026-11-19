@@ -1,6 +1,6 @@
 import problems as prb
 import algorithms as alg
-
+import numpy as np
 
 compsToRun = [3]
 
@@ -310,6 +310,7 @@ def train_pong(
     history = {
         "games": [],
         "states": [],
+        "avg_q": [],
         "win_rate": []
     }
 
@@ -359,12 +360,11 @@ def train_pong(
         learner.decayEpsilon()
 
         if (game_num + 1) % eval_interval == 0:
-
+            
             win_rate = evaluate_pong(
                 learner,
-                100
+                500
             )
-
             history["games"].append(
                 game_num + 1
             )
@@ -380,6 +380,7 @@ def train_pong(
             print(
                 f"Games:{game_num+1} "
                 f"States:{learner.getTableSize()} "
+                f"AvgQ:{learner.getAverageQ():.3f} "
                 f"WinRate:{win_rate:.3f}"
             )
 
@@ -388,9 +389,9 @@ def train_pong(
 
 def evaluate_pong(
     learner,
-    num_games=100
+    num_games=500
 ):
-
+    np.random.seed(42)
     learner.setEvaluationMode()
 
     old_epsilon = learner.epsilon

@@ -2,10 +2,13 @@ import problems as prb
 import algorithms as alg
 import cv2
 
-
 def run_demo():
 
     print("Running Progress Report Demos...")
+
+    #
+    # TIC TAC TOE
+    #
 
     print("\n===== TIC TAC TOE =====\n")
 
@@ -17,26 +20,75 @@ def run_demo():
 
     ttt.playGame()
 
+    #
+    # SNAKE
+    #
+
     print("\n===== SNAKE =====\n")
 
-    snake = prb.Game(
-        prb.Snake(),
-        alg.SnakeRandomAgent(),
-        verbose=True,
-        singlePlayer=True
+    snake = prb.Snake()
+
+    agent = alg.SnakeRandomAgent()
+
+    max_ticks = 250
+
+    for _ in range(max_ticks):
+
+        if snake.isTerminal():
+
+            break
+
+        move = agent.getMove(snake)
+
+        snake.doMove(move)
+
+        snake.showState(20)
+
+    print(
+        f"Final Score: {snake.score} "
+        f"Length: {len(snake.snake)} "
+        f"Ticks: {snake.ticks}"
     )
 
-    snake.playGame()
+    #
+    # PONG
+    #
 
     print("\n===== PONG =====\n")
 
-    pong = prb.Game(
-        prb.Pong(),
-        alg.RandomAgent(),
-        alg.RandomAgent()
+    pong = prb.Pong()
+
+    p0 = alg.RandomAgent()
+    p1 = alg.RandomAgent()
+
+    max_ticks = 250
+
+    for _ in range(max_ticks):
+
+        if pong.isTerminal():
+
+            break
+
+        move0 = p0.getMove(pong)
+        move1 = p1.getMove(pong)
+
+        pong.doMove(
+            (
+                move0,
+                move1
+            )
+        )
+
+        pong.showState(20)
+
+    print(
+        f"Winner: {pong.getWinner()} "
+        f"Ticks: {pong.ticks}"
     )
 
-    pong.playGame()
+    #
+    # GRIDGARIO
+    #
 
     print("\n===== GRIDGARIO =====\n")
 
@@ -44,17 +96,11 @@ def run_demo():
 
     agent = alg.RandomAgent()
 
-    for _ in range(1000):
+    max_ticks = 250
+
+    for _ in range(max_ticks):
 
         if agar.isTerminal():
-
-            winner = agar.getWinner()
-
-            if winner == 0:
-                print("Player Wins!")
-
-            elif winner == 1:
-                print("Enemy Wins!")
 
             break
 
@@ -64,33 +110,34 @@ def run_demo():
 
         agar.showState(20)
 
-    print(f"Final Player Mass: {agar.player_mass}")
-    print(f"Final Enemy Mass: {agar.enemy_mass}")
+    if agar.isTerminal():
+
+        winner = agar.getWinner()
+
+        if winner == 0:
+
+            print("Player Wins!")
+
+        elif winner == 1:
+
+            print("Enemy Wins!")
+
+    else:
+
+        print(
+            f"Demo reached tick limit "
+            f"({max_ticks})"
+        )
+
+    print(
+        f"Final Player Mass: {agar.player_mass}"
+    )
+
+    print(
+        f"Final Enemy Mass: {agar.enemy_mass}"
+    )
 
     cv2.destroyAllWindows()
-
-def check_features(env):
-    print(
-        f"\nChecking {env.__class__.__name__}..."
-    )
-    try:
-        features = env.getDiscreteFeatures()
-
-        print(
-            f"Discrete Features: {features}"
-        )
-    except Exception as e:
-        print(
-            f"{env.__class__.__name__} feature pipeline failed:"
-        )
-
-        print(e)
-        return False
-
-    print(
-        f"{env.__class__.__name__} feature pipeline is valid!"
-    )
-    return True
 
 if __name__ == "__main__":
     environments = [
@@ -99,8 +146,6 @@ if __name__ == "__main__":
         prb.Pong(),
         prb.Agar()
     ]
-    print("===== FEATURE PIPELINE CHECK =====")
-    for env in environments:
-        check_features(env)
+
     print("\n===== DEMONSTRATIONS =====")
     run_demo()
