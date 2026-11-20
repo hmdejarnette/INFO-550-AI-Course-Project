@@ -2,7 +2,7 @@ import problems as prb
 import algorithms as alg
 import numpy as np
 
-compsToRun = [3]
+compsToRun = [4]
 
 
 def compare_random_agents(num_games=100):
@@ -430,6 +430,134 @@ def evaluate_pong(
     return wins / num_games
 
 
+def train_gridgario(
+    num_games=5000,
+    eval_interval=250
+):
+
+    learner = alg.TabularAgent()
+
+    history = {
+        "games": [],
+        "states": [],
+        "avg_q": [],
+        "win_rate": []
+    }
+
+    for game_num in range(num_games):
+
+        agar = prb.Agar()
+
+        while not agar.isTerminal():
+
+            state = learner.initializeState(agar)
+
+            previous_mass = agar.player_mass
+
+            action = learner.getMove(agar)
+
+            agar.doMove(action)
+
+            next_state = agar.getDiscreteFeatures()
+
+            reward = 0
+
+            #
+            # Reward growth
+            #
+
+            if agar.player_mass > previous_mass:
+
+                reward += 1
+
+            #
+            # Terminal rewards
+            #
+
+            if agar.isTerminal():
+
+                if agar.getWinner() == 0:
+
+                    reward += 10
+
+                else:
+
+                    reward -= 10
+
+            learner.update(
+                state,
+                action,
+                next_state,
+                reward,
+                agar.getLegalMoves()
+            )
+
+        learner.decayEpsilon()
+
+        if (game_num + 1) % eval_interval == 0:
+
+            win_rate = evaluate_gridgario(
+                learner,
+                200
+            )
+
+            history["games"].append(
+                game_num + 1
+            )
+
+            history["states"].append(
+                learner.getTableSize()
+            )
+
+            history["avg_q"].append(
+                learner.getAverageQ()
+            )
+
+            history["win_rate"].append(
+                win_rate
+            )
+
+            print(
+                f"Games:{game_num+1} "
+                f"States:{learner.getTableSize()} "
+                f"AvgQ:{learner.getAverageQ():.3f} "
+                f"WinRate:{win_rate:.3f}"
+            )
+
+    return learner, history
+  
+def evaluate_gridgario(
+    learner,
+    num_games=200
+):
+
+    learner.setEvaluationMode()
+
+    old_epsilon = learner.epsilon
+
+    learner.epsilon = 0
+
+    wins = 0
+
+    for _ in range(num_games):
+
+        agar = prb.Agar()
+
+        while not agar.isTerminal():
+
+            action = learner.getMove(agar)
+
+            agar.doMove(action)
+
+        if agar.getWinner() == 0:
+
+            wins += 1
+
+    learner.epsilon = old_epsilon
+
+    learner.setTrainingMode()
+
+    return wins / num_games
 
 if __name__ == "__main__":
 
@@ -503,5 +631,34 @@ if __name__ == "__main__":
             print(
                 f"Games:{g:5d} "
                 f"States:{s:5d} "
+                f"WinRate:{w:.3f}"
+            )
+            
+    if 4 in compsToRun:
+    
+        print(
+            "\n===== GRIDGARIO TRAINING! =====\n"
+        )
+    
+        learner, history = train_gridgario(
+            num_games=5000,
+            eval_interval=250
+        )
+    
+        print(
+            "\n===== GRIDGARIO HISTORY =====\n"
+        )
+    
+        for g, s, q, w in zip(
+            history["games"],
+            history["states"],
+            history["avg_q"],
+            history["win_rate"]
+        ):
+    
+            print(
+                f"Games:{g:5d} "
+                f"States:{s:5d} "
+                f"AvgQ:{q:.3f} "
                 f"WinRate:{w:.3f}"
             )
